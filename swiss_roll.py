@@ -7,8 +7,7 @@ import matplotlib.pyplot as plt
 from utils import compute_scores
 
 # Construct a 3D Swiss roll dataset
-dataset = make_swiss_roll(n_samples=2000, noise=0.2, hole=True)[0]
-data = torch.Tensor(dataset)
+data = make_swiss_roll(n_samples=2000, noise=0.2, hole=True)[0]
 dim = data.shape[1]
 colors = data[:, 2] # assign color to each point based on the 3rd dimension of the data
 
@@ -32,10 +31,10 @@ for i in range(num_points):
     test_point = data[test_points_idx[i]]
     tangent_space = data[test_points_neighbors[i]] - test_point
     # standardize the tangent space
-    tangent_space = tangent_space / torch.std(tangent_space, axis=0)
+    tangent_space = tangent_space / np.std(tangent_space, axis=0)
     
     # Probabilistic PCA
-    pca_cores = compute_scores(tangent_space.numpy(), dim)
+    pca_cores = compute_scores(tangent_space, dim)
     effective_dim = np.argmax(pca_cores) + 1
 
     if effective_dim not in visited:
@@ -48,7 +47,17 @@ for i in range(num_points):
         ax = fig.add_subplot(111, projection='3d')
         ax.scatter(tangent_space[:, 0], tangent_space[:, 1], tangent_space[:, 2], c='blue')
         for j in range(effective_dim):
-            ax.quiver(0, 0, 0, estimated_tangent_plane[j, 0], estimated_tangent_plane[j, 1], estimated_tangent_plane[j, 2])
+            ax.quiver(0, 0, 0, 3 * estimated_tangent_plane[j, 0], 3 * estimated_tangent_plane[j, 1], 3 * estimated_tangent_plane[j, 2])
+        
+        # Add a plane spanned by the tangent plane
+        if effective_dim == 2:
+            u = np.linspace(-5, 5, 10)
+            v = np.linspace(-5, 5, 10)
+            U, V = np.meshgrid(u, v)
+            plane_points = np.zeros((U.size, 3))
+            for idx, (ui, vi) in enumerate(zip(U.flatten(), V.flatten())):
+                plane_points[idx] = ui * estimated_tangent_plane[0] + vi * estimated_tangent_plane[1]
+            ax.plot_trisurf(plane_points[:, 0], plane_points[:, 1], plane_points[:, 2], color='red', alpha=0.5)
         plt.title(f'Tangent Space identified with effective dimension = {effective_dim}')
         plt.show()
 
@@ -64,3 +73,6 @@ plt.xlabel('Effective Dimension')
 plt.ylabel('Frequency')
 plt.title('Histogram of Effective Dimension of Tangent Space')
 plt.show()
+
+# Train the parametric UMAP model
+
