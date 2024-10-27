@@ -7,10 +7,11 @@ import matplotlib.pyplot as plt
 from utils import compute_scores
 
 # Construct a 3D Swiss roll dataset
-data = make_swiss_roll(n_samples=2000, noise=0.2, hole=True)[0]
+data = make_swiss_roll(n_samples=2000, noise=0.0, hole=False)[0]
 dim = data.shape[1]
 colors = data[:, 2] # assign color to each point based on the 3rd dimension of the data
 
+"""
 # Plot the dataset
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
@@ -73,6 +74,42 @@ plt.xlabel('Effective Dimension')
 plt.ylabel('Frequency')
 plt.title('Histogram of Effective Dimension of Tangent Space')
 plt.show()
+"""
 
 # Train the parametric UMAP model
+from parametric_umap import ParametricUMAP
+from utils import MLP
+
+encoder = MLP(dim, [64, 512, 512, 512, 64], 2)
+model = ParametricUMAP(dim, 2, data, encoder, K=15)
+ce_loss, pearson_loss = model.fit(epochs=1000, batch_size=256, negative_samples=5, pearson_coef=0.0)
+
+# Plot the loss curves
+fig, axs = plt.subplots(2, 1, figsize=(10, 15))
+axs[0].plot(ce_loss, label="Cross-Entropy Loss")
+axs[0].set_title('Cross-Entropy Loss')
+axs[1].plot(pearson_loss, label="Pearson Correlation")
+axs[1].set_title('Pearson Correlation')
+plt.show()
+
+# Plot the embedded Swiss roll
+embedding = model.transform(torch.tensor(data, dtype=torch.float).to(model.device)).detach().cpu().numpy()
+plt.scatter(embedding[:, 0], embedding[:, 1], c=colors)
+plt.colorbar()
+plt.title('Embedded Swiss Roll (alpha=0.0)')
+plt.xlabel('UMAP Dimension 1')
+plt.ylabel('UMAP Dimension 2')
+plt.show()
+
+# from umap.parametric_umap import ParametricUMAP
+
+# embedder = ParametricUMAP(n_epochs=50, verbose=True)
+# embedding = embedder.fit_transform(data)
+
+# plt.scatter(embedding[:, 0], embedding[:, 1], c=colors)
+# plt.colorbar()
+# plt.title('Embedded Swiss Roll')
+# plt.xlabel('UMAP Dimension 1')
+# plt.ylabel('UMAP Dimension 2')
+# plt.show()
 
