@@ -18,6 +18,23 @@ def compute_scores(X, n_components):
     return pca_scores
 
 
+"""
+For more efficient computation in the high-dimensional setting, we randomly sample 50 dimensions and run probabilistic PCA.
+The effective dimension is the one with the highest PCA score.
+"""
+def compute_effective_dimension(X, dim, random_sample=50):
+    random_dim = np.random.choice(np.arange(dim), random_sample, replace=False) # randomly select 50 dimensions
+    pca = PCA(whiten=True)
+    
+    pca_scores = []
+    for n in random_dim:
+        pca.n_components = n
+        pca_scores.append(np.mean(cross_val_score(pca, X)))
+        # print(f"Dimension: {n}, PCA Score: {pca_scores[-1]}")
+
+    return random_dim[np.argmax(pca_scores)].item()
+
+
 # Obtained from the original UMAP implementation
 # See https://github.com/lmcinnes/umap/blob/master/umap/umap_.py#L1386 
 def find_ab_params(spread, min_dist):

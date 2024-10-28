@@ -20,7 +20,8 @@ data = trainset.data.numpy().reshape(-1, 784)
 data = (data - data.mean(axis=0)) / (data.std(axis=0) + 1e-7)
 
 # Define the model
-encoder = MLP(784, [5000, 5000, 5000, 5000, 512], 2).to(torch.device('cuda'))
+embed_dim = 200
+encoder = MLP(784, [5000, 5000, 5000, 5000, 512], embed_dim).to(torch.device('cuda'))
 model = ParametricUMAP(784, 2, data, encoder, K=15).to(torch.device('cuda'))
 try:
     model.load_state_dict(torch.load('./mnist_model.pth', weights_only=True))
@@ -29,7 +30,7 @@ except:
     print("Failed to load mnist_model.pth")
 
 # Train the model
-ce_loss, pearson_loss = model.fit(epochs=500, batch_size=1024, negative_samples=5, pearson_coef=0.0)
+ce_loss, pearson_loss = model.fit(epochs=500, batch_size=1024, negative_samples=5, pearson_coef=0.01)
 
 # Save the model
 torch.save(model.state_dict(), 'mnist_model.pth')
@@ -44,12 +45,25 @@ plt.show()
 
 # Plot the embedded MNIST dataset
 embedding = model.transform(torch.tensor(data, dtype=torch.float).to(model.device)).detach().cpu().numpy()
-plt.scatter(embedding[:, 0], embedding[:, 1], c=trainset.targets.numpy(), cmap='tab10')
-plt.colorbar()
-plt.title('Embedded MNIST')
-plt.xlabel('UMAP Dimension 1')
-plt.ylabel('UMAP Dimension 2')
-plt.show()
+if embed_dim == 2:
+    plt.scatter(embedding[:, 0], embedding[:, 1], c=trainset.targets.numpy(), cmap='tab10', s=1)
+    plt.colorbar()
+    plt.title('Embedded MNIST Handwritten Digits')
+    plt.xlabel('UMAP Dimension 1')
+    plt.ylabel('UMAP Dimension 2')
+    plt.show()
+else:
+    # run pca on the embedded data and plot the first two principal components
+    from sklearn.decomposition import PCA
+    pca = PCA(n_components=2)
+    pca.fit(embedding)
+    embedding_pca = pca.transform(embedding)
+    plt.scatter(embedding_pca[:, 0], embedding_pca[:, 1], c=trainset.targets.numpy(), cmap='tab10', s=1)
+    plt.colorbar()
+    plt.title('Embedded MNIST')
+    plt.xlabel('UMAP Dimension 1')
+    plt.ylabel('UMAP Dimension 2')
+    plt.show()
 
 # from umap.parametric_umap import ParametricUMAP
 
