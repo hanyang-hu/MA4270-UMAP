@@ -106,27 +106,31 @@ class ParametricUMAP(torch.nn.Module):
     """
     def fit(self, epochs=100, batch_size=64, lr=1e-2, pearson_coef=0.0, negative_samples=5):
         ce_loss, pearson_loss = [], []
-        X = torch.tensor(self.dataset, dtype=torch.float).to(self.device)
+        X = torch.tensor(self.dataset, dtype=torch.float)
         optimizer = torch.optim.SGD(self.parameters(), lr=lr)
 
         # construct the batched edge dataset, sampled by edge weight
         row_ind, col_ind = self.umap_graph.nonzero()
         edge_weight = np.array([self.umap_graph[row_ind[i], col_ind[i]] for i in range(row_ind.shape[0])])
         edge_sampler = torch.utils.data.WeightedRandomSampler(edge_weight, len(edge_weight))
+        X_ind = X[row_ind]
+        X_col = X[col_ind]
         edge_dataset = torch.utils.data.TensorDataset(
-            torch.tensor(row_ind, dtype=torch.long),
-            torch.tensor(col_ind, dtype=torch.long)
+            X_ind, X_col
         )
         edge_loader = torch.utils.data.DataLoader(edge_dataset, batch_size=batch_size, sampler=edge_sampler)
 
         progress_bar = tqdm.tqdm(range(epochs), desc="Training")
         for _ in progress_bar:
             epoch_ce_loss, epoch_pearson_loss = [], []
-            for row_ind, col_ind in edge_loader:
-                edge_num = row_ind.shape[0] # the number of edges in the batch
+            for X_row, X_col in edge_loader:
+                edge_num = X_row.shape[0] # the number of edges in the batch
 
-                Z_row = self.encoder(X[row_ind])
-                Z_col = self.encoder(X[col_ind])
+                X_row = X_row.to(self.device)
+                X_col = X_col.to(self.device)
+
+                Z_row = self.encoder(X_row)
+                Z_col = self.encoder(X_col)
                 Z_row_repeated = Z_row.repeat(negative_samples, 1)
                 Z_col_repeated = Z_col.repeat(negative_samples, 1)
                 # shuffle the batch to get negative samples
@@ -156,7 +160,7 @@ class ParametricUMAP(torch.nn.Module):
                     pearson_corr = 0.0
                     epoch_pearson_loss.append(0.0)
                 else:
-                    X_row_dist = torch.cdist(X[row_ind], X[row_ind], p=2).flatten()
+                    X_row_dist = torch.cdist(X_row, X_row, p=2).flatten()
                     Z_row_dist = torch.cdist(Z_row, Z_row, p=2).flatten()
                     pearson_corr = -torch.mean((X_row_dist - X_row_dist.mean()) * (Z_row_dist - Z_row_dist.mean())) / (X_row_dist.std() * Z_row_dist.std() + 1e-7)
                     epoch_pearson_loss.append(pearson_corr.item())
