@@ -20,11 +20,19 @@ data = trainset.data.numpy().reshape(-1, 784)
 data = (data - data.mean(axis=0)) / (data.std(axis=0) + 1e-7)
 
 # Define the model
-encoder = MLP(784, [5000, 5000, 5000, 1024, 512], 2).to(torch.device('cuda'))
+encoder = MLP(784, [5000, 5000, 5000, 5000, 512], 2).to(torch.device('cuda'))
 model = ParametricUMAP(784, 2, data, encoder, K=15).to(torch.device('cuda'))
+try:
+    model.load_state_dict(torch.load('./mnist_model.pth', weights_only=True))
+    print("Loaded the model from mnist_model.pth")
+except:
+    print("Failed to load mnist_model.pth")
 
 # Train the model
-ce_loss, pearson_loss = model.fit(epochs=100, batch_size=1024, negative_samples=5, pearson_coef=0.0)
+ce_loss, pearson_loss = model.fit(epochs=500, batch_size=1024, negative_samples=5, pearson_coef=0.0)
+
+# Save the model
+torch.save(model.state_dict(), 'mnist_model.pth')
 
 # Plot the loss curves
 fig, axs = plt.subplots(2, 1, figsize=(10, 15))
