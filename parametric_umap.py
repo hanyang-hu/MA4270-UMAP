@@ -108,6 +108,7 @@ class ParametricUMAP(torch.nn.Module):
         ce_loss, pearson_loss = [], []
         X = torch.tensor(self.dataset, dtype=torch.float)
         optimizer = torch.optim.SGD(self.parameters(), lr=lr)
+        # optimizer = torch.optim.Adam(self.parameters(), lr=lr*0.1) # Adam optimizer is more stable, it typically takes a smaller learning rate
 
         # construct the batched edge dataset, sampled by edge weight
         row_ind, col_ind = self.umap_graph.nonzero()
