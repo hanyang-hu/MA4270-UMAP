@@ -21,7 +21,7 @@ data = (data - data.mean(axis=0)) / (data.std(axis=0) + 1e-7)
 
 # Define the model
 embed_dim = 200
-encoder = MLP(784, [5000, 5000, 5000, 5000, 512], embed_dim).to(torch.device('cuda'))
+encoder = MLP(784, [1024, 2048, 1024, 512], embed_dim).to(torch.device('cuda'))
 model = ParametricUMAP(784, 2, data, encoder, K=15).to(torch.device('cuda'))
 try:
     model.load_state_dict(torch.load('./mnist_model.pth', weights_only=True))
